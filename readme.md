@@ -44,7 +44,6 @@ The following diagram summarizes the two-stage CodeEnhance workflow:
 - **Automated LLM feedback loop** for iterative refinement
 - **Easy integration** with OpenAI models (supports base and fine-tuned LLMs)
 - **Reproducible experiments** with structured logging and output organization
-- **Preprocessing tools** for preparing fine-tuning datasets
 
 ---
 
