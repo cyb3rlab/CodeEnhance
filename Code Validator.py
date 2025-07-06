@@ -12,28 +12,49 @@ from openai import OpenAI
 from tqdm import tqdm
 
 # =================== User Configuration ===================
+# Specify which attempts to process (can be a range "1-5" or "1,3,5" etc.)
 ATTEMPT_SPEC = "1-5"  # e.g., "1", "2-4", "1,3,5"
-BASE_INPUT_ROOT = Path("/path/to/code_generation_outputs")      # Change to your input dir
-BASE_OUTPUT_ROOT = Path("/path/to/validation_outputs")          # Change to your output dir
-API_KEY = "YOUR_OPENAI_API_KEY"
-TARGET_MODELS = {
-    "baseline": "gpt-4o",
-    "framework": "ft:gpt-4o-2024-08-06:your-finetune-id",
-    "expert":    "ft:gpt-4o-2024-08-06:your-finetune-id"
-}
-MAX_ATTEMPTS = 5  # Max validation/refinement cycles per file
 
+# Directory containing the code files to validate (output from code generation phase)
+BASE_INPUT_ROOT = Path("/path/to/code_generation_outputs")      # Change to your input directory
+
+# Directory where validation results and revised code will be saved
+BASE_OUTPUT_ROOT = Path("/path/to/validation_outputs")          # Change to your output directory
+
+# Your OpenAI API key (replace with your real API key)
+API_KEY = "YOUR_OPENAI_API_KEY"
+
+# Dictionary of models to validate (add your fine-tuned models as needed)
+TARGET_MODELS = {
+    "baseline": "gpt-4o",  # Baseline LLM (e.g., GPT-4o)
+    "framework": "ft:gpt-4o-2024-08-06:your-finetune-id",  # Your fine-tuned LLM for framework
+    "expert":    "ft:gpt-4o-2024-08-06:your-finetune-id"   # Expert-tuned LLM
+}
+
+# Maximum number of validation/refinement cycles for each file
+MAX_ATTEMPTS = 5
+
+# Initialize OpenAI client for LLM-based validation and code correction
 client = OpenAI(api_key=API_KEY)
 
 # =================== Utility: Docstring ===================
 def extract_module_docstring(code: str) -> str:
+    """
+    Extracts the module-level docstring from code.
+    Returns the docstring only if all required sections (Input Prompt, Intention, Functionality) are present.
+    """
     for m in re.finditer(r'("""|\'\'\')([\s\S]*?)\1', code):
         ds = m.group(0)
         if all(k in ds for k in ("Input Prompt", "Intention", "Functionality")):
             return ds
+    # If no valid docstring, return a template for later use
     return '"""\nInput Prompt:\nIntention:\nFunctionality:\n"""'
 
 def strip_module_docstring(code: str) -> str:
+    """
+    Removes the module-level docstring from code, returning the remaining code body.
+    Only strips docstring if all required sections are present.
+    """
     for m in re.finditer(r'("""|\'\'\')([\s\S]*?)\1', code):
         ds = m.group(0)
         if all(k in ds for k in ("Input Prompt", "Intention", "Functionality")):
@@ -41,23 +62,39 @@ def strip_module_docstring(code: str) -> str:
     return code.lstrip()
 
 def ensure_module_docstring(body: str, doc: str) -> str:
+    """
+    Re-attaches the docstring to the top of the code body (if missing or replaced).
+    """
     return doc.strip() + "\n\n" + body.lstrip()
 
 def split_docstring_and_code(code: str) -> Tuple[str, str]:
+    """
+    Splits the code into its docstring and main code body.
+    Returns (docstring, code_body).
+    """
     return extract_module_docstring(code).strip(), strip_module_docstring(code).lstrip()
 
 # =================== Utility: Code & Tags ===================
 def extract_tag_section(text: str, tag: str) -> str | None:
+    """
+    Utility to extract sections enclosed in custom tags (e.g., <Code>...</Code>) from LLM responses.
+    """
     m = re.search(fr"<{tag}>([\s\S]*?)</{tag}>", text, re.IGNORECASE)
     return m.group(1).strip() if m else None
 
 def strip_code_fence(txt: str) -> str:
+    """
+    Strips markdown code fences (``` or ```python) from code blocks.
+    """
     lines = txt.strip().splitlines()
     if lines and lines[0].startswith("```"): lines = lines[1:]
     if lines and lines[-1].startswith("```"): lines = lines[:-1]
     return "\n".join(lines).strip()
 
 def extract_pure_code(content: str) -> str:
+    """
+    Extracts pure code from LLM responses by looking for <Code> tags or markdown code fences.
+    """
     tagged = extract_tag_section(content, "Code")
     if tagged:
         return tagged
@@ -68,11 +105,20 @@ def extract_pure_code(content: str) -> str:
 
 # =================== SAST Runners ===================
 def run_bandit(path: Path) -> Dict[str, Any]:
+    """
+    Runs Bandit (security static analyzer) on the provided Python file.
+    Returns results as a JSON dict.
+    """
     out = subprocess.run(["bandit", "-f", "json", "-q", str(path)],
                          capture_output=True, text=True, check=False).stdout
     return json.loads(out or '{"results": []}')
 
 def run_pylint(path: Path) -> List[Dict[str, Any]]:
+    """
+    Runs Pylint (syntax/static checker) on the Python file.
+    Only enables fatal errors (E0001) to focus on critical syntax errors.
+    Returns results as a JSON list.
+    """
     out = subprocess.run(
         ["pylint", "-f", "json", "--disable=all", "--enable=E0001", str(path)],
         capture_output=True, text=True, check=False
@@ -84,6 +130,10 @@ def run_pylint(path: Path) -> List[Dict[str, Any]]:
 
 # =================== OpenAI Wrapper ===================
 def oai(model: str, prompt: str, retries: int = 4) -> str:
+    """
+    Sends a prompt to the specified LLM model using OpenAI API.
+    Retries on failure with exponential backoff.
+    """
     wait = 4.0
     for _ in range(retries):
         try:
@@ -98,6 +148,16 @@ def oai(model: str, prompt: str, retries: int = 4) -> str:
 
 # =================== Functional Validation ===================
 def functional_check(full_code: str, model: str) -> Tuple[str, str, str]:
+    """
+    Uses an LLM to check if the code matches the intent and requirements stated in the docstring.
+    If 'Correct', returns as is.
+    If 'Incorrect', expects the LLM to return a corrected code body and reason.
+
+    Returns:
+        - Either "Correct" or the corrected code body,
+        - The LLM prompt used for this check,
+        - The raw LLM response.
+    """
     doc, body = split_docstring_and_code(full_code)
     prompt = f"""
 <Instruction>
@@ -136,6 +196,18 @@ Formatting constraints
 
 # =================== Main File Validation ===================
 def validate_file(args: Tuple[Path, str, str, str, Path]):
+    """
+    Main validation loop for a single file:
+    1. For each attempt, runs SAST tools (Pylint, Bandit).
+    2. If issues found, asks LLM to fix all (preserving docstring/comments).
+    3. Runs LLM-based functional validation. If incorrect, refines again.
+    4. Saves all intermediate and final files + logs for reproducibility.
+
+    Args:
+        args: (file_path, file_name, model_name, model_id, output_base_path)
+    Returns:
+        dict with filename and revision logs for all attempts
+    """
     fpath, fname, mname, mid, out_base = args
     m_out = out_base / mname
     m_out.mkdir(parents=True, exist_ok=True)
@@ -154,11 +226,13 @@ def validate_file(args: Tuple[Path, str, str, str, Path]):
         tmp = att_dir / f"tmp_{fname}"
         tmp.write_text(code_full, encoding="utf-8")
 
+        # Static analysis: Pylint (syntax), Bandit (security)
         pylint_iss = [{"line": i["line"], "message": i["message"]} for i in run_pylint(tmp)]
         bandit_iss = run_bandit(tmp).get("results", [])
         sast_fixed = False
 
         if pylint_iss or bandit_iss:
+            # If SAST issues found, prompt LLM to fix all
             issues_summary = (
                 "Pylint Issues:\n" + ("\n".join(i["message"] for i in pylint_iss) or "None") +
                 "\n\nBandit Issues:\n" + ("\n".join(i["issue_text"] for i in bandit_iss) or "None")
@@ -193,11 +267,13 @@ Formatting rules
         else:
             sast_prompt, sast_resp = "No SAST issues found.", ""
 
+        # Save code for this attempt
         (att_dir / f"{fname[:-3]}_attempt_{att}.py").write_text(
             ensure_module_docstring(code_body, latest_doc), encoding="utf-8"
         )
         tmp.unlink(missing_ok=True)
 
+        # If only SAST fix needed (not functionally correct yet), log and continue
         if sast_fixed and (pylint_iss or bandit_iss):
             revisions.append({
                 "attempt": att, "pylint_issues": pylint_iss, "bandit_issues": bandit_iss,
@@ -206,6 +282,7 @@ Formatting rules
             })
             continue
 
+        # Now, check for functional correctness via LLM self-evaluation
         func_res, func_prompt, func_resp = functional_check(
             ensure_module_docstring(code_body, latest_doc), mid
         )
@@ -222,15 +299,18 @@ Formatting rules
             "status": status
         })
 
+        # Stop if all requirements are satisfied
         if status == "Correct":
             (final_dir / fname).write_text(ensure_module_docstring(code_body, latest_doc), encoding="utf-8")
             break
 
+    # Save revision logs for this file (all attempts)
     (m_out / f"{fname[:-3]}_validation_results.json").write_text(
         json.dumps({"filename": fname, "revisions": revisions}, indent=2, ensure_ascii=False),
         encoding="utf-8"
     )
 
+    # If not resolved, mark as unresolved and save last version
     if revisions[-1]["status"] != "Correct":
         tmp_unres = m_out / f"unresolved_tmp_{os.getpid()}_{uuid.uuid4()}.json"
         tmp_unres.write_text(json.dumps({"filename": fname, "final_status": revisions[-1]["status"]},
@@ -241,6 +321,10 @@ Formatting rules
 
 # =================== Attempt Spec Parser ===================
 def parse_attempts(spec: str) -> List[int]:
+    """
+    Parses the ATTEMPT_SPEC string into a list of attempt indices.
+    Accepts ranges (e.g., "1-5") and comma-separated values ("1,3,5").
+    """
     parts, out = spec.split(","), set()
     for p in parts:
         p = p.strip()
@@ -253,6 +337,13 @@ def parse_attempts(spec: str) -> List[int]:
 
 # =================== Main Loop ===================
 if __name__ == "__main__":
+    """
+    Main entry point:
+    For each specified attempt, for each model:
+      - Loads generated code files,
+      - Runs multi-stage SAST & functional validation pipeline,
+      - Saves all intermediate/final results, and unresolved logs.
+    """
     for ext_att in parse_attempts(ATTEMPT_SPEC):
         in_root = BASE_INPUT_ROOT / f"Attempt {ext_att}"
         out_root = BASE_OUTPUT_ROOT / f"Attempt {ext_att}"
@@ -268,6 +359,7 @@ if __name__ == "__main__":
                 continue
 
             print(f"\nValidating model: {mname}")
+            # Gather .py files that are not intermediate attempts
             tasks = [
                 (p, p.name, mname, mid, out_root)
                 for p in in_dir.iterdir()
@@ -278,10 +370,12 @@ if __name__ == "__main__":
             with Pool(processes=max_workers) as pool:
                 results = list(tqdm(pool.imap(validate_file, tasks), total=len(tasks)))
 
+            # Save all results for this model/attempt
             (out_root / mname / "all_result.json").write_text(
                 json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
             )
 
+            # Aggregate unresolved cases (not fully validated within max attempts)
             pattern = str((out_root / mname) / "unresolved_tmp_*.json")
             unresolved = []
             for fp in glob.glob(pattern):
@@ -296,4 +390,5 @@ if __name__ == "__main__":
                     json.dump(unresolved, f, indent=2, ensure_ascii=False)
 
             print(f"Validation done: {mname} — {len(results)} files")
+
 
