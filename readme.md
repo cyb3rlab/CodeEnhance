@@ -1,13 +1,5 @@
 # CodeEnhance: LLM-Generated Python Code Enhacement Thorugh SAST Integration and Fine-Tuning
 
----
-
-> **Note:**\
-> This repository contains a research-oriented framework.\
-> The code is *not* an official release accompanying a published paper.\
-> If you use or modify this framework, please cite the GitHub repository (not a paper).
-
----
 
 ## Overview
 
