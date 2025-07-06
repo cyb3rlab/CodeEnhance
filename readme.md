@@ -67,11 +67,11 @@ pip install pylint bandit
 
 This repository includes two main scripts:
 
-- \Code Generator.py 
+- ``\Code Generator.py 
   Generates Python code for each prompt using your selected LLM.\
   All generated code includes a structured docstring with `Input Prompt`, `Intention`, and `Functionality`.
 
-- \Code Validator.py 
+- ``\Code Validator.py 
   Iteratively validates and refines generated code:
 
   - Syntax validation with Pylint
