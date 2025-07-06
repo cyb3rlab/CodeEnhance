@@ -1,4 +1,4 @@
-# CodeEnhance: Security-Driven Python Code Refinement for LLMs
+# CodeEnhance: LLM-Generated Python Code Enhacement Thorugh SAST Integration and Fine-Tuning
 
 ---
 
@@ -140,9 +140,9 @@ If you find it useful for research or teaching, please cite the GitHub repositor
 
 ```
 @misc{codeenhance2024,
-  author = {Your Name},
-  title = {CodeEnhance: Security-Driven Python Code Refinement for LLMs},
-  year = {2024},
+  author = {Jongmin Lee, },
+  title = {CodeEnhance: LLM-Generated Python Code Enhacement Thorugh SAST Integration and Fine-Tuning},
+  year = {2025},
   howpublished = {\url{https://github.com/your-org/CodeEnhance}}
 }
 ```
@@ -151,8 +151,7 @@ If you find it useful for research or teaching, please cite the GitHub repositor
 
 ## Contact
 
-For questions, suggestions, or collaboration, please open an issue or pull request,\
-or contact the maintainer via [GitHub Issues](https://github.com/your-org/CodeEnhance/issues).
+For questions, suggestions, or collaboration, please contact the maintainer at jongmin@jaist.ac.jp.
 
 ---
 
