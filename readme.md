@@ -134,8 +134,8 @@ This code is **not yet associated with a published paper**.\
 If you find it useful for research or teaching, please cite the GitHub repository directly:
 
 ```
-@misc{codeenhance2024,
-  author = {Jongmin Lee, },
+@misc{codeenhance2025,
+  author = {Jongmin Lee, Khang Mai, Nakul Ghate, Tomihiko Yagyu, Razvan Beuran and Yasuo Tan},
   title = {CodeEnhance: LLM-Generated Python Code Enhacement Thorugh SAST Integration and Fine-Tuning},
   year = {2025},
   howpublished = {\url{https://github.com/your-org/CodeEnhance}}
