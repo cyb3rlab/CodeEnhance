@@ -18,6 +18,9 @@ Key features include:
 ## Framework Architecture
 
 The following diagram summarizes the two-stage CodeEnhance workflow:
+<p align="center">
+  <img src="framework_overall.png" alt="CodeEnhance Framework Overview" width="700"/>
+</p>
 
 - **Stage 1 (Blue)**:
 
