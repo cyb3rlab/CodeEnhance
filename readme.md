@@ -141,7 +141,6 @@ If you find it useful for research or teaching, please cite the GitHub repositor
 ---
 
 ## Contact
-
 For inquiries, please use the Issues tab on GitHub.
 ---
 
