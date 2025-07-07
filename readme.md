@@ -142,7 +142,6 @@ If you find it useful for research or teaching, please cite the GitHub repositor
 
 ## Contact
 
-For questions, suggestions, or collaboration, please contact the maintainer at jongmin@jaist.ac.jp.
-
+For inquiries, please use the Issues tab on GitHub.
 ---
 
