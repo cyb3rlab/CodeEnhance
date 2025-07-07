@@ -119,8 +119,7 @@ python Code\ Validator.py
 
 ## License
 
-This code is released under the MIT License.\
-Please see the `LICENSE` file for details.
+Distributed under the BSD License. See the LICENSE file for details.
 
 ---
 
@@ -141,6 +140,7 @@ If you find it useful for research or teaching, please cite the GitHub repositor
 ---
 
 ## Contact
-- For inquiries, please use the Issues tab on GitHub.
+For inquiries, please use the Issues tab on GitHub.
+
 ---
 
