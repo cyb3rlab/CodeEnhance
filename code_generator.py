@@ -7,8 +7,8 @@ from openai import OpenAI
 from tqdm import tqdm
 
 # ------------------ Configuration ------------------
-# Set the root directory for all data operations (default: ~/Downloads)
-BASE_DIR = str(pathlib.Path.home() / "Downloads")
+# Set the root directory for all data operations (default: script directory)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Path to the dataset file containing code generation prompts (JSON format)
 DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")   # Change as needed
@@ -343,6 +343,3 @@ if __name__ == "__main__":
         print(f"Missing docstrings for all models: {summary_file}")
     else:
         print("No missing docstring samples.")
-
-
-
