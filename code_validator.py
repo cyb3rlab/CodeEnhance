@@ -390,5 +390,3 @@ if __name__ == "__main__":
                     json.dump(unresolved, f, indent=2, ensure_ascii=False)
 
             print(f"Validation done: {mname} — {len(results)} files")
-
-
