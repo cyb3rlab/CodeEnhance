@@ -158,7 +158,7 @@ This code is not yet associated with a published paper. If you find it useful fo
 ```
 @misc{CodeReinforce2025,
   author = {{Cybersecurity Research Lab}},
-  title = {{CodeReinforce}: {LLM}-Generated Python Code Enhacement Through SAST Integration and Fine-Tuning},
+  title = {{CodeReinforce}: {LLM}-Generated Python Code Reinforcement Through SAST Integration and Fine-Tuning},
   year = {2025},
   howpublished = {\url{https://github.com/cyb3rlab/CodeReinforce}}
 }
